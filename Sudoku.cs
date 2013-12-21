@@ -1,29 +1,61 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+
 
 namespace Sudoku
 {
     public class SudokuSolver
     {
         private int[,] grid;
-        private int rows, columns;
+        private int gridSize, subgridSize;
+        private Dictionary<int, List<int>> subgridIndicesLookup; 
+
 
         public SudokuSolver(int[,] grid)
         {
             this.grid = grid;
-            rows = grid.GetLength(0);
-            columns = grid.GetLength(1);
+            gridSize = grid.GetLength(0);
+            subgridSize = (int)(Math.Sqrt(gridSize));
+            subgridIndicesLookup = new Dictionary<int, List<int>>();
         }
 
-        public HashSet<int> RowCandidatesBasedOnGrid(int row)
+
+        IEnumerable<int> GetCandidatesBasedOnExclusionSet(IEnumerable<int> exclusionSet)
         {
-            HashSet<int> candidates = new HashSet<int>();
-            
+            IEnumerable<int> candidates = from candidate in Enumerable.Range(1, 9)
+                                          where !exclusionSet.Contains(candidate) 
+                                          select candidate;
+
+            return candidates;
+        }
+
+        List<int> GetSubgridIndices(int index)
+        {            
+            if (subgridIndicesLookup.ContainsKey(index))
+                return subgridIndicesLookup[index];
+
+            List<int> subgridIndices = new List<int>();
+
+            Func<int, int, bool> isPartOfSubGrid = (x, y) => (x / subgridSize) == (y / subgridSize);
+
+            for (int i = 0; i < gridSize; i++)
+            {
+                if (isPartOfSubGrid(i, index))
+                    subgridIndices.Add(i);
+            }
+
+            subgridIndicesLookup[index] = subgridIndices;
+
+            return subgridIndices;
+        }
+
+
+        public IEnumerable<int> RowCandidatesBasedOnGrid(int row)
+        {            
             HashSet<int> gridelements = new HashSet<int>();
 
-            for (int column=0; column< columns; column++)
+            for (int column=0; column< gridSize; column++)
             {
                 int gridelement = grid[row, column];
 
@@ -33,24 +65,16 @@ namespace Sudoku
                 }
             }
 
-            for (int candidate = 1; candidate <= 9; candidate++)
-            {
-                if (!gridelements.Contains(candidate))
-                {
-                    candidates.Add(candidate);
-                }
-            }
+            IEnumerable<int> candidates = GetCandidatesBasedOnExclusionSet(gridelements);
 
             return candidates;
         }
 
-        public HashSet<int> ColumnCandidatesBasedOnGrid(int column)
+        public IEnumerable<int> ColumnCandidatesBasedOnGrid(int column)
         {
-            HashSet<int> candidates = new HashSet<int>();
-
             HashSet<int> gridelements = new HashSet<int>();
 
-            for(int row=0;row < rows;row++)
+            for(int row=0;row < gridSize;row++)
             {
                 int gridelement = grid[row,column];
                 if (gridelement != 0)
@@ -59,41 +83,15 @@ namespace Sudoku
                 }
             }
 
-            for (int candidate = 1; candidate <= 9; candidate++)
-            {
-                if (!gridelements.Contains(candidate))
-                {
-                    candidates.Add(candidate);
-                }
-            }
+            IEnumerable<int> candidates = GetCandidatesBasedOnExclusionSet(gridelements);
 
             return candidates;
-
         }
 
-
-
-
-        public HashSet<int> SubgridCandidatesBasedOnGrid(int row, int column)
+        public IEnumerable<int> SubgridCandidatesBasedOnGrid(int row, int column)
         {
-            HashSet<int> candidates = new HashSet<int>();
-
-            int subgridSize = (int)(Math.Sqrt(rows));
-
-
-            Func<int, int, bool> isPartOfSubGrid = (x,y)=> (x/subgridSize) == (y/subgridSize);
-
-            List<int> subgridrows = new List<int>();
-            List<int> subgridcols = new List<int>();
-
-            for (int i = 0; i < rows; i++)
-            {
-                if (isPartOfSubGrid(i, row))
-                    subgridrows.Add(i);
-
-                if (isPartOfSubGrid(i, column))
-                    subgridcols.Add(i);
-            }
+            List<int> subgridrows = GetSubgridIndices(row);       
+            List<int> subgridcols = GetSubgridIndices(column);    
 
             HashSet<int> subgridelements = new HashSet<int>();
             foreach (int subgridrow in subgridrows)
@@ -104,25 +102,16 @@ namespace Sudoku
                 }
             }
 
-
-            for (int candidate = 1; candidate <= 9; candidate++)
-            {
-                if (!subgridelements.Contains(candidate))
-                {
-                    candidates.Add(candidate);
-                }
-            }
+            IEnumerable<int> candidates = GetCandidatesBasedOnExclusionSet(subgridelements);
 
             return candidates;
         }
 
-        public HashSet<int> RowCandidatesBasedOnSolution(int row,  Dictionary<Tuple<int,int>,int> solution)
+        public IEnumerable<int> RowCandidatesBasedOnSolution(int row, Dictionary<Tuple<int, int>, int> solution)
         {
-            HashSet<int> candidates = new HashSet<int>();
-
             HashSet<int> solutionElements = new HashSet<int>();
 
-            for (int column = 0; column < rows; column++)
+            for (int column = 0; column < gridSize; column++)
             {
                 Tuple<int, int> tuple = new Tuple<int, int>(row, column);
 
@@ -130,26 +119,18 @@ namespace Sudoku
                     solutionElements.Add(solution[tuple]);
             }
 
-            for (int candidate = 1; candidate <= 9; candidate++)
-            {
-                if (!solutionElements.Contains(candidate))
-                {
-                    candidates.Add(candidate);
-                }
-            }
+            IEnumerable<int> candidates = GetCandidatesBasedOnExclusionSet(solutionElements);
                 
             return candidates;
         }
 
 
 
-        public HashSet<int> ColumnCandidatesBasedOnSolution(int column, Dictionary<Tuple<int, int>, int> solution)
+        public IEnumerable<int> ColumnCandidatesBasedOnSolution(int column, Dictionary<Tuple<int, int>, int> solution)
         {
-            HashSet<int> candidates = new HashSet<int>();
-
             HashSet<int> solutionElements = new HashSet<int>();
 
-            for (int row = 0; row < rows; row++)
+            for (int row = 0; row < gridSize; row++)
             {
                 Tuple<int, int> tuple = new Tuple<int, int>(row, column);
 
@@ -157,39 +138,17 @@ namespace Sudoku
                     solutionElements.Add(solution[tuple]);
             }
 
-            for (int candidate = 1; candidate <= 9; candidate++)
-            {
-                if (!solutionElements.Contains(candidate))
-                {
-                    candidates.Add(candidate);
-                }
-            }
+            IEnumerable<int> candidates = GetCandidatesBasedOnExclusionSet(solutionElements);
 
             return candidates;
         }
 
 
 
-        public HashSet<int> SubgridCandidatesBasedOnSolution(int row, int column, Dictionary<Tuple<int, int>, int> solution)
-        {
-            HashSet<int> candidates = new HashSet<int>();
-
-            int subgridSize = (int)(Math.Sqrt(rows));
-
-
-            Func<int, int, bool> isPartOfSubGrid = (x, y) => (x / subgridSize) == (y / subgridSize);
-
-            List<int> subgridrows = new List<int>();
-            List<int> subgridcols = new List<int>();
-
-            for (int i = 0; i < rows; i++)
-            {
-                if (isPartOfSubGrid(i, row))
-                    subgridrows.Add(i);
-
-                if (isPartOfSubGrid(i, column))
-                    subgridcols.Add(i);
-            }
+        public IEnumerable<int> SubgridCandidatesBasedOnSolution(int row, int column, Dictionary<Tuple<int, int>, int> solution)
+        {            
+            List<int> subgridrows = GetSubgridIndices(row);        
+            List<int> subgridcols = GetSubgridIndices(column);     
 
             HashSet<int> subgridelements = new HashSet<int>();
             foreach (int subgridrow in subgridrows)
@@ -205,37 +164,28 @@ namespace Sudoku
                 }
             }
 
-
-            for (int candidate = 1; candidate <= 9; candidate++)
-            {
-                if (!subgridelements.Contains(candidate))
-                {
-                    candidates.Add(candidate);
-                }
-            }
+            IEnumerable<int> candidates = GetCandidatesBasedOnExclusionSet(subgridelements);
 
             return candidates;
         }
 
 
-        public HashSet<int> GetCandidates(int row, int column, int[,] grid, Dictionary<Tuple<int, int>, int> solution)
+        public IEnumerable<int> GetCandidates(int row, int column, int[,] grid, Dictionary<Tuple<int, int>, int> solution)
         {
-            HashSet<int> allcandidates= new HashSet<int>(){1,2,3,4,5,6,7,8,9};
-
-            HashSet<int> a = RowCandidatesBasedOnGrid(row);
-            HashSet<int> b = ColumnCandidatesBasedOnGrid(column);
-            HashSet<int> c = SubgridCandidatesBasedOnGrid(row, column);
-            HashSet<int> d = RowCandidatesBasedOnSolution(row, solution);
-            HashSet<int> e = ColumnCandidatesBasedOnSolution(column, solution);
-            HashSet<int> f = SubgridCandidatesBasedOnSolution(row, column, solution);
+            IEnumerable<int> a = RowCandidatesBasedOnGrid(row);
+            IEnumerable<int> b = ColumnCandidatesBasedOnGrid(column);
+            IEnumerable<int> c = SubgridCandidatesBasedOnGrid(row, column);
+            IEnumerable<int> d = RowCandidatesBasedOnSolution(row, solution);
+            IEnumerable<int> e = ColumnCandidatesBasedOnSolution(column, solution);
+            IEnumerable<int> f = SubgridCandidatesBasedOnSolution(row, column, solution);
 
 
-            IEnumerable<int> candidates = from candidate in allcandidates
+            IEnumerable<int> candidates = from candidate in Enumerable.Range(1,9)
                 where a.Contains(candidate) && b.Contains(candidate) && c.Contains(candidate) && d.Contains(candidate)
                       && e.Contains(candidate) && f.Contains(candidate)
                 select candidate;
 
-            return candidates.ToHashSet();
+            return candidates;
 
         }
 
@@ -243,9 +193,9 @@ namespace Sudoku
         {
             if (grid[row, column] == 0)
             {
-                HashSet<int> candidates = GetCandidates(row, column, grid, solution);
-
-                if (candidates.Count == 0)
+                IEnumerable<int> candidates = GetCandidates(row, column, grid, solution);
+                
+                if (!candidates.Any()) //if there is no candidate
                     return false;
 
                 foreach (int candidate in candidates)
@@ -253,7 +203,7 @@ namespace Sudoku
                     Tuple<int, int> tuple = new Tuple<int, int>(row, column);
                     solution[tuple] = candidate;
 
-                    if (row + 1 < rows)
+                    if (row + 1 < gridSize)
                     {
                         if (Solve(row + 1, column, solution) == false)
                         {
@@ -263,7 +213,7 @@ namespace Sudoku
                         else
                             return true;
                     }
-                    else if (column + 1 < columns)
+                    else if (column + 1 < gridSize)
                     {
                         if (Solve(0, column + 1, solution) == false)
                         {
@@ -280,11 +230,11 @@ namespace Sudoku
             }
             else
             {
-                if (row + 1 < rows)
+                if (row + 1 < gridSize)
                 {
                     return Solve(row + 1, column, solution);
                 }
-                else if (column + 1 < columns)
+                else if (column + 1 < gridSize)
                 {
                     
                     return Solve(0, column + 1, solution);
@@ -312,6 +262,5 @@ namespace Sudoku
 
             return null;
         }
-
     }
 }
