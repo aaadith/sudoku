@@ -170,7 +170,7 @@ namespace Sudoku
         }
 
 
-        public IEnumerable<int> GetCandidates(int row, int column, int[,] grid, Dictionary<Tuple<int, int>, int> solution)
+        public IEnumerable<int> GetCandidates_old(int row, int column, int[,] grid, Dictionary<Tuple<int, int>, int> solution)
         {
             IEnumerable<int> a = RowCandidatesBasedOnGrid(row);
             IEnumerable<int> b = ColumnCandidatesBasedOnGrid(column);
@@ -184,6 +184,26 @@ namespace Sudoku
                 where a.Contains(candidate) && b.Contains(candidate) && c.Contains(candidate) && d.Contains(candidate)
                       && e.Contains(candidate) && f.Contains(candidate)
                 select candidate;
+
+            return candidates;
+
+        }
+
+
+        public IEnumerable<int> GetCandidates(int row, int column, int[,] grid, Dictionary<Tuple<int, int>, int> solution)
+        {
+            IEnumerable<int> a = RowCandidatesBasedOnGrid(row).ToHashSet();
+            IEnumerable<int> b = ColumnCandidatesBasedOnGrid(column).ToHashSet();
+            IEnumerable<int> c = SubgridCandidatesBasedOnGrid(row, column).ToHashSet();
+            IEnumerable<int> d = RowCandidatesBasedOnSolution(row, solution).ToHashSet();
+            IEnumerable<int> e = ColumnCandidatesBasedOnSolution(column, solution).ToHashSet();
+            IEnumerable<int> f = SubgridCandidatesBasedOnSolution(row, column, solution).ToHashSet();
+
+
+            IEnumerable<int> candidates = from candidate in Enumerable.Range(1, 9)
+                                          where a.Contains(candidate) && b.Contains(candidate) && c.Contains(candidate) && d.Contains(candidate)
+                                                && e.Contains(candidate) && f.Contains(candidate)
+                                          select candidate;
 
             return candidates;
 
